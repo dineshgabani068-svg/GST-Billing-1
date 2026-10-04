@@ -43,3 +43,4 @@ public/tesseract/
 
 # Built documentation site (regenerate with: node docs-site/build.mjs)
 docs-site/out/
+.env
