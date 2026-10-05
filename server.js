@@ -1367,11 +1367,13 @@ process.on('unhandledRejection', (err) => logFatal(err, 'unhandledRejection'));
 // endpoint". Moved above the catch-all in v1.10.0. See earlier in file.
 
 // Try ports starting from STARTING_PORT (persisted preference) until one is available.
-// Bound to 127.0.0.1 explicitly so the server can NEVER be reached from the LAN —
-// every byte stays on the user's machine, which the privacy promise depends on.
+// On hosting platforms (Bolt, Railway, Render, etc.) the platform supplies PORT
+// and expects 0.0.0.0 binding — honour that. For local desktop installs we keep
+// the 127.0.0.1 loopback binding so the server is never reachable from the LAN.
 let activeServer = null;
 function startServer(port) {
-  const server = app.listen(port, '127.0.0.1', () => {
+  const host = process.env.PORT ? '0.0.0.0' : '127.0.0.1';
+  const server = app.listen(port, host, () => {
     activeServer = server;
     // Persist the chosen port — the .bat launcher reads this for the browser URL.
     // Writing on EVERY successful boot means: if our preferred 47371 was busy and
@@ -1653,7 +1655,13 @@ app.post('/api/recurring/:id/generate', (req, res) => {
   }
 });
 
-startServer(STARTING_PORT);
+// On hosting platforms, PORT is set by the platform and we must use it directly.
+// For local desktop installs, scan the 47371+ range as before.
+if (process.env.PORT) {
+  startServer(parseInt(process.env.PORT, 10));
+} else {
+  startServer(STARTING_PORT);
+}
 // Fire once after a short delay so the listener is up first; then once a day
 // for users whose server stays up >24h.
 // v1.10.6 — audit L19: async caller. Uncaught rejections logged via
